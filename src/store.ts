@@ -1,55 +1,146 @@
-import { useState, useCallback, useEffect } from 'react';
-import { Bet, Transaction } from './types';
+import { useEffect, useState, useCallback } from 'react';
+import { supabase } from './lib/supabase';
+import { Bet, BetStatus, Transaction } from './types';
 
-const BETS_KEY          = 'bt_bets_v1';
-const BANKROLL_KEY      = 'bt_bankroll_v1';
-const TRANSACTIONS_KEY  = 'bt_transactions_v1';
+// ── DB row → app type mappers ─────────────────────────────────────────────────
 
-const load = <T>(key: string, fallback: T): T => {
-  try { return JSON.parse(localStorage.getItem(key) ?? 'null') ?? fallback; }
-  catch { return fallback; }
-};
+const toBet = (row: any): Bet => ({
+  id:        row.id,
+  createdAt: row.created_at,
+  matchDate: row.match_date,
+  match:     row.match,
+  league:    row.league,
+  market:    row.market,
+  selection: row.selection,
+  odds:      parseFloat(row.odds),
+  stake:     parseFloat(row.stake),
+  status:    row.status as BetStatus,
+  notes:     row.notes ?? '',
+});
+
+const toTx = (row: any): Transaction => ({
+  id:        row.id,
+  createdAt: row.created_at,
+  date:      row.date,
+  type:      row.type,
+  amount:    parseFloat(row.amount),
+  notes:     row.notes ?? '',
+});
+
+// ── Store hook ────────────────────────────────────────────────────────────────
 
 export const useStore = () => {
-  const [bets, setBets]                 = useState<Bet[]>(() => load(BETS_KEY, []));
-  const [initialBankroll, setInitialBR] = useState<number>(() => load(BANKROLL_KEY, 280));
-  const [transactions, setTransactions] = useState<Transaction[]>(() => load(TRANSACTIONS_KEY, []));
+  const [bets, setBets]                 = useState<Bet[]>([]);
+  const [transactions, setTransactions] = useState<Transaction[]>([]);
+  const [initialBankroll, setInitialBR] = useState<number>(280);
+  const [loading, setLoading]           = useState(true);
 
-  useEffect(() => { localStorage.setItem(BETS_KEY, JSON.stringify(bets)); }, [bets]);
-  useEffect(() => { localStorage.setItem(BANKROLL_KEY, String(initialBankroll)); }, [initialBankroll]);
-  useEffect(() => { localStorage.setItem(TRANSACTIONS_KEY, JSON.stringify(transactions)); }, [transactions]);
-
-  const addBet = useCallback((bet: Omit<Bet, 'id' | 'createdAt'>) => {
-    setBets(prev => [
-      { ...bet, id: crypto.randomUUID(), createdAt: new Date().toISOString() },
-      ...prev,
-    ]);
+  // ── Initial load ──────────────────────────────────────────────────────────
+  useEffect(() => {
+    (async () => {
+      const [betsRes, txRes, settingsRes] = await Promise.all([
+        supabase.from('bets').select('*').order('created_at', { ascending: false }),
+        supabase.from('transactions').select('*').order('created_at', { ascending: false }),
+        supabase.from('settings').select('value').eq('key', 'initial_bankroll').single(),
+      ]);
+      if (betsRes.data)     setBets(betsRes.data.map(toBet));
+      if (txRes.data)       setTransactions(txRes.data.map(toTx));
+      if (settingsRes.data) setInitialBR(parseFloat(settingsRes.data.value));
+      setLoading(false);
+    })();
   }, []);
 
-  const updateBet = useCallback((id: string, updates: Partial<Omit<Bet, 'id'>>) => {
-    setBets(prev => prev.map(b => b.id === id ? { ...b, ...updates } : b));
+  // ── Real-time — one channel for all three tables ──────────────────────────
+  useEffect(() => {
+    const channel = supabase
+      .channel('bettrack-live')
+      // bets
+      .on('postgres_changes', { event: 'INSERT', schema: 'public', table: 'bets' },
+        p => setBets(prev =>
+          [toBet(p.new), ...prev].sort((a, b) =>
+            new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime()
+          )
+        )
+      )
+      .on('postgres_changes', { event: 'UPDATE', schema: 'public', table: 'bets' },
+        p => setBets(prev => prev.map(b => b.id === p.new.id ? toBet(p.new) : b))
+      )
+      .on('postgres_changes', { event: 'DELETE', schema: 'public', table: 'bets' },
+        p => setBets(prev => prev.filter(b => b.id !== (p.old as any).id))
+      )
+      // transactions
+      .on('postgres_changes', { event: 'INSERT', schema: 'public', table: 'transactions' },
+        p => setTransactions(prev => [toTx(p.new), ...prev])
+      )
+      .on('postgres_changes', { event: 'DELETE', schema: 'public', table: 'transactions' },
+        p => setTransactions(prev => prev.filter(t => t.id !== (p.old as any).id))
+      )
+      // settings
+      .on('postgres_changes', { event: 'UPDATE', schema: 'public', table: 'settings' },
+        p => { if (p.new.key === 'initial_bankroll') setInitialBR(parseFloat(p.new.value)); }
+      )
+      .subscribe();
+
+    return () => { supabase.removeChannel(channel); };
   }, []);
 
-  const deleteBet = useCallback((id: string) => {
-    setBets(prev => prev.filter(b => b.id !== id));
+  // ── Bets CRUD ─────────────────────────────────────────────────────────────
+  const addBet = useCallback(async (bet: Omit<Bet, 'id' | 'createdAt'>) => {
+    await supabase.from('bets').insert({
+      match_date: bet.matchDate,
+      match:      bet.match,
+      league:     bet.league,
+      market:     bet.market,
+      selection:  bet.selection,
+      odds:       bet.odds,
+      stake:      bet.stake,
+      status:     bet.status,
+      notes:      bet.notes || null,
+    });
   }, []);
 
-  const setInitialBankroll = useCallback((n: number) => setInitialBR(n), []);
-
-  const addTransaction = useCallback((t: Omit<Transaction, 'id' | 'createdAt'>) => {
-    setTransactions(prev => [
-      { ...t, id: crypto.randomUUID(), createdAt: new Date().toISOString() },
-      ...prev,
-    ]);
+  const updateBet = useCallback(async (id: string, updates: Partial<Omit<Bet, 'id'>>) => {
+    const db: Record<string, unknown> = {};
+    if (updates.matchDate  !== undefined) db.match_date = updates.matchDate;
+    if (updates.match      !== undefined) db.match      = updates.match;
+    if (updates.league     !== undefined) db.league     = updates.league;
+    if (updates.market     !== undefined) db.market     = updates.market;
+    if (updates.selection  !== undefined) db.selection  = updates.selection;
+    if (updates.odds       !== undefined) db.odds       = updates.odds;
+    if (updates.stake      !== undefined) db.stake      = updates.stake;
+    if (updates.status     !== undefined) db.status     = updates.status;
+    if (updates.notes      !== undefined) db.notes      = updates.notes || null;
+    await supabase.from('bets').update(db).eq('id', id);
   }, []);
 
-  const deleteTransaction = useCallback((id: string) => {
-    setTransactions(prev => prev.filter(t => t.id !== id));
+  const deleteBet = useCallback(async (id: string) => {
+    await supabase.from('bets').delete().eq('id', id);
+  }, []);
+
+  // ── Transactions CRUD ─────────────────────────────────────────────────────
+  const addTransaction = useCallback(async (t: Omit<Transaction, 'id' | 'createdAt'>) => {
+    await supabase.from('transactions').insert({
+      date:   t.date,
+      type:   t.type,
+      amount: t.amount,
+      notes:  t.notes || null,
+    });
+  }, []);
+
+  const deleteTransaction = useCallback(async (id: string) => {
+    await supabase.from('transactions').delete().eq('id', id);
+  }, []);
+
+  // ── Settings ──────────────────────────────────────────────────────────────
+  const setInitialBankroll = useCallback(async (n: number) => {
+    setInitialBR(n); // optimistic
+    await supabase.from('settings').update({ value: String(n) }).eq('key', 'initial_bankroll');
   }, []);
 
   return {
-    bets, initialBankroll, transactions,
-    addBet, updateBet, deleteBet, setInitialBankroll,
+    bets, transactions, initialBankroll, loading,
+    addBet, updateBet, deleteBet,
     addTransaction, deleteTransaction,
+    setInitialBankroll,
   };
 };

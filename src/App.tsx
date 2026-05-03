@@ -19,7 +19,7 @@ import { Tab } from './types';
 
 export default function App() {
   const {
-    bets, initialBankroll, transactions,
+    bets, initialBankroll, transactions, loading,
     addBet, updateBet, deleteBet, setInitialBankroll,
     addTransaction, deleteTransaction,
   } = useStore();
@@ -35,6 +35,17 @@ export default function App() {
   const pnlUp  = stats.totalProfit >= 0;
   const roiUp  = stats.roi >= 0;
   const wrGood = stats.winRate >= 50;
+
+  if (loading) {
+    return (
+      <div className="min-h-screen bg-[#F2F2F7] flex items-center justify-center">
+        <div className="flex flex-col items-center gap-3">
+          <div className="w-8 h-8 border-2 border-[#007AFF] border-t-transparent rounded-full animate-spin" />
+          <p className="text-sm font-medium text-gray-400">Loading…</p>
+        </div>
+      </div>
+    );
+  }
 
   return (
     <div className="min-h-screen bg-[#F2F2F7]">
