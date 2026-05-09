@@ -1,8 +1,10 @@
 interface Props {
-  won:     number;
-  lost:    number;
-  pending: number;
-  voided:  number;
+  won:      number;
+  lost:     number;
+  halfWon:  number;
+  halfLost: number;
+  pending:  number;
+  voided:   number;
   bestWin:  number;
   avgOdds:  number;
   avgStake: number;
@@ -19,16 +21,18 @@ interface BarRow {
 }
 
 export const BetBreakdown = ({
-  won, lost, pending, voided,
+  won, lost, halfWon, halfLost, pending, voided,
   bestWin, avgOdds, avgStake, pendingExposure, streak,
 }: Props) => {
-  const total = won + lost + pending + voided;
+  const total = won + lost + halfWon + halfLost + pending + voided;
 
   const bars: BarRow[] = [
-    { label: 'Won',     count: won,     pct: total ? won / total     : 0, color: 'bg-[#34C759]', bg: 'bg-[#34C759]/10' },
-    { label: 'Lost',    count: lost,    pct: total ? lost / total    : 0, color: 'bg-[#FF3B30]', bg: 'bg-[#FF3B30]/10' },
-    { label: 'Pending', count: pending, pct: total ? pending / total : 0, color: 'bg-[#FF9F0A]', bg: 'bg-[#FF9F0A]/10' },
-  ];
+    { label: 'Won',    count: won,      pct: total ? won / total      : 0, color: 'bg-[#34C759]',  bg: 'bg-[#34C759]/10'  },
+    { label: '½ Won',  count: halfWon,  pct: total ? halfWon / total  : 0, color: 'bg-yellow-400', bg: 'bg-yellow-400/10' },
+    { label: '½ Lost', count: halfLost, pct: total ? halfLost / total : 0, color: 'bg-amber-400',  bg: 'bg-amber-400/10'  },
+    { label: 'Lost',   count: lost,     pct: total ? lost / total     : 0, color: 'bg-[#FF3B30]',  bg: 'bg-[#FF3B30]/10'  },
+    { label: 'Pending',count: pending,  pct: total ? pending / total  : 0, color: 'bg-[#FF9F0A]',  bg: 'bg-[#FF9F0A]/10'  },
+  ].filter(b => b.count > 0 || b.label === 'Won' || b.label === 'Lost' || b.label === 'Pending');
 
   const streakLabel = streak.type
     ? `${streak.count}${streak.type === 'W' ? 'W' : 'L'} streak`

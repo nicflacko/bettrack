@@ -1,4 +1,4 @@
-export type BetStatus = 'pending' | 'won' | 'lost' | 'void';
+export type BetStatus = 'pending' | 'won' | 'lost' | 'void' | 'half-won' | 'half-lost';
 export type Tab = 'dashboard' | 'bets' | 'analytics';
 export type TransactionType = 'deposit' | 'withdrawal';
 

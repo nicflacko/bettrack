@@ -10,13 +10,15 @@ interface Props {
 }
 
 const STATUS: Record<BetStatus, { label: string; dot: string; pill: string }> = {
-  pending: { label: 'Pending', dot: 'bg-[#FF9F0A]', pill: 'bg-orange-50 text-orange-600 hover:bg-orange-100' },
-  won:     { label: 'Won',     dot: 'bg-[#34C759]', pill: 'bg-green-50  text-green-600  hover:bg-green-100'  },
-  lost:    { label: 'Lost',    dot: 'bg-[#FF3B30]', pill: 'bg-red-50    text-red-500    hover:bg-red-100'    },
-  void:    { label: 'Void',    dot: 'bg-gray-400',  pill: 'bg-gray-100  text-gray-500   hover:bg-gray-200'   },
+  pending:    { label: 'Pending', dot: 'bg-[#FF9F0A]', pill: 'bg-orange-50 text-orange-600 hover:bg-orange-100' },
+  won:        { label: 'Won',     dot: 'bg-[#34C759]', pill: 'bg-green-50  text-green-600  hover:bg-green-100'  },
+  lost:       { label: 'Lost',    dot: 'bg-[#FF3B30]', pill: 'bg-red-50    text-red-500    hover:bg-red-100'    },
+  'half-won': { label: '½ Won',   dot: 'bg-yellow-400', pill: 'bg-yellow-50 text-yellow-600 hover:bg-yellow-100' },
+  'half-lost':{ label: '½ Lost',  dot: 'bg-amber-400',  pill: 'bg-amber-50  text-amber-600  hover:bg-amber-100'  },
+  void:       { label: 'Void',    dot: 'bg-gray-400',  pill: 'bg-gray-100  text-gray-500   hover:bg-gray-200'   },
 };
 
-const CYCLE: BetStatus[] = ['pending', 'won', 'lost', 'void'];
+const CYCLE: BetStatus[] = ['pending', 'won', 'half-won', 'half-lost', 'lost', 'void'];
 
 const LEAGUE_COLORS: Record<string, string> = {
   'Premier League':    'bg-purple-50  text-purple-600',
@@ -66,7 +68,7 @@ export const BetTable = ({ bets, onUpdateStatus, onDelete, limit }: Props) => {
             {shown.map((bet, i) => {
               const profit   = calcProfit(bet);
               const potRet   = calcPotentialReturn(bet);
-              const settled  = bet.status === 'won' || bet.status === 'lost';
+              const settled  = ['won','lost','half-won','half-lost'].includes(bet.status);
               const s        = STATUS[bet.status];
               const nextStatus = CYCLE[(CYCLE.indexOf(bet.status) + 1) % CYCLE.length];
 
@@ -128,7 +130,11 @@ export const BetTable = ({ bets, onUpdateStatus, onDelete, limit }: Props) => {
                   {/* P&L */}
                   <td className="px-2 py-4 text-right pr-4 whitespace-nowrap">
                     {settled ? (
-                      <span className={`text-sm font-bold ${profit >= 0 ? 'text-[#34C759]' : 'text-[#FF3B30]'}`}>
+                      <span className={`text-sm font-bold ${
+                        bet.status === 'half-won'  ? 'text-yellow-500' :
+                        bet.status === 'half-lost' ? 'text-amber-500'  :
+                        profit >= 0 ? 'text-[#34C759]' : 'text-[#FF3B30]'
+                      }`}>
                         {profit >= 0 ? `+$${profit.toFixed(2)}` : `-$${Math.abs(profit).toFixed(2)}`}
                       </span>
                     ) : (

@@ -121,6 +121,8 @@ export default function App() {
                 <BetBreakdown
                   won={stats.wonCount}
                   lost={stats.lostCount}
+                  halfWon={stats.halfWonCount}
+                  halfLost={stats.halfLostCount}
                   pending={stats.pendingCount}
                   voided={stats.voidCount}
                   bestWin={stats.bestWin}
@@ -233,6 +235,8 @@ export default function App() {
                 <BetBreakdown
                   won={stats.wonCount}
                   lost={stats.lostCount}
+                  halfWon={stats.halfWonCount}
+                  halfLost={stats.halfLostCount}
                   pending={stats.pendingCount}
                   voided={stats.voidCount}
                   bestWin={stats.bestWin}

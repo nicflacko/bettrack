@@ -14,10 +14,12 @@ const LEAGUES = [
 ];
 
 const MARKETS = [
-  'Match Winner', 'Double Chance', 'Over/Under 2.5 Goals',
-  'Over/Under 1.5 Goals', 'Both Teams to Score', 'Asian Handicap',
-  'Over/Under Corners', 'Cards', 'First Goal Scorer',
-  'Correct Score', 'Half Time Result', 'Other',
+  'Match Winner', 'Draw No Bet', 'Double Chance',
+  'Asian Handicap', 'Over/Under 1.5 Goals', 'Over/Under 2.5 Goals',
+  'Over/Under 3.5 Goals', 'Both Teams to Score',
+  'Anytime Goalscorer', 'First Goal Scorer',
+  'Over/Under Corners', 'Cards', 'Correct Score',
+  'Half Time Result', 'Other',
 ];
 
 type FormData = {
@@ -34,10 +36,12 @@ const blank: FormData = {
 };
 
 const STATUS_OPTIONS: { value: BetStatus; label: string; emoji: string; active: string }[] = [
-  { value: 'pending', label: 'Pending', emoji: '⏳', active: 'bg-orange-50 border-orange-300 text-orange-700' },
-  { value: 'won',     label: 'Won',     emoji: '✅', active: 'bg-green-50  border-green-300  text-green-700'  },
-  { value: 'lost',    label: 'Lost',    emoji: '❌', active: 'bg-red-50    border-red-300    text-red-600'    },
-  { value: 'void',    label: 'Void',    emoji: '⚪', active: 'bg-gray-100  border-gray-300   text-gray-600'   },
+  { value: 'pending',   label: 'Pending', emoji: '⏳', active: 'bg-orange-50 border-orange-300 text-orange-700' },
+  { value: 'won',       label: 'Won',     emoji: '✅', active: 'bg-green-50  border-green-300  text-green-700'  },
+  { value: 'lost',      label: 'Lost',    emoji: '❌', active: 'bg-red-50    border-red-300    text-red-600'    },
+  { value: 'half-won',  label: '½ Won',   emoji: '🟡', active: 'bg-yellow-50 border-yellow-300 text-yellow-700' },
+  { value: 'half-lost', label: '½ Lost',  emoji: '🟠', active: 'bg-amber-50  border-amber-300  text-amber-700'  },
+  { value: 'void',      label: 'Void',    emoji: '⚪', active: 'bg-gray-100  border-gray-300   text-gray-600'   },
 ];
 
 const Input = ({
@@ -243,7 +247,7 @@ export const AddBetModal = ({ onAdd, onClose }: Props) => {
             <label className="block text-[10px] font-bold text-gray-400 uppercase tracking-widest mb-1.5">
               Status
             </label>
-            <div className="grid grid-cols-4 gap-2">
+            <div className="grid grid-cols-3 gap-2">
               {STATUS_OPTIONS.map(opt => (
                 <button
                   key={opt.value}
