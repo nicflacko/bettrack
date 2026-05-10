@@ -88,8 +88,26 @@ export const BetTable = ({ bets, onUpdateStatus, onDelete, onEdit, limit }: Prop
 
                   {/* Match + selection */}
                   <td className="px-2 py-4 min-w-[180px]">
-                    <p className="text-sm font-semibold text-gray-800 leading-tight">{bet.match}</p>
-                    <p className="text-xs text-gray-400 mt-0.5">{bet.selection}</p>
+                    <div className="flex items-center gap-1.5">
+                      <p className="text-sm font-semibold text-gray-800 leading-tight">{bet.match}</p>
+                      {bet.betType === 'parlay' && (
+                        <span className="text-[9px] font-bold px-1.5 py-0.5 rounded bg-purple-100 text-purple-600 uppercase tracking-wide shrink-0">Parlay</span>
+                      )}
+                    </div>
+                    {bet.betType === 'parlay' && bet.legs && bet.legs.length > 0 ? (
+                      <div className="mt-1 space-y-0.5">
+                        {bet.legs.map((leg, idx) => (
+                          <div key={idx} className="flex items-center gap-1.5">
+                            <span className={`w-1 h-1 rounded-full shrink-0 ${STATUS[leg.status]?.dot ?? 'bg-gray-300'}`} />
+                            <span className="text-[11px] text-gray-500 truncate max-w-[220px]">
+                              {leg.match} — {leg.selection} <span className="text-gray-400">@{leg.odds}</span>
+                            </span>
+                          </div>
+                        ))}
+                      </div>
+                    ) : (
+                      <p className="text-xs text-gray-400 mt-0.5">{bet.selection}</p>
+                    )}
                     {bet.notes && (
                       <p className="text-[10px] text-gray-300 mt-0.5 italic truncate max-w-[200px]">{bet.notes}</p>
                     )}

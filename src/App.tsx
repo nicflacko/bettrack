@@ -251,6 +251,39 @@ export default function App() {
               </div>
             </div>
 
+            {/* Parlay performance */}
+            {stats.parlayCount > 0 && (
+              <div className="bg-white rounded-2xl border border-black/[0.04] shadow-card p-5 fade-in">
+                <h2 className="text-sm font-bold text-gray-900 mb-4">Parlay Performance</h2>
+                <div className="grid grid-cols-2 sm:grid-cols-4 gap-4">
+                  <div>
+                    <p className="text-[10px] font-semibold text-gray-400 uppercase tracking-widest mb-1">Parlays</p>
+                    <p className="text-xl font-bold text-gray-900">{stats.parlayCount}</p>
+                    <p className="text-xs text-gray-400">{stats.parlayWonCount}W · {stats.parlayLostCount}L</p>
+                  </div>
+                  <div>
+                    <p className="text-[10px] font-semibold text-gray-400 uppercase tracking-widest mb-1">P&L</p>
+                    <p className={`text-xl font-bold ${stats.parlayProfit >= 0 ? 'text-[#34C759]' : 'text-[#FF3B30]'}`}>
+                      {fmt(stats.parlayProfit, true)}
+                    </p>
+                    <p className="text-xs text-gray-400">Staked {fmt(stats.parlayStaked)}</p>
+                  </div>
+                  <div>
+                    <p className="text-[10px] font-semibold text-gray-400 uppercase tracking-widest mb-1">ROI</p>
+                    <p className={`text-xl font-bold ${stats.parlayRoi >= 0 ? 'text-[#AF52DE]' : 'text-[#FF3B30]'}`}>
+                      {fmtPct(stats.parlayRoi, true)}
+                    </p>
+                    <p className="text-xs text-gray-400">vs overall {fmtPct(stats.roi, true)}</p>
+                  </div>
+                  <div>
+                    <p className="text-[10px] font-semibold text-gray-400 uppercase tracking-widest mb-1">Best Parlay</p>
+                    <p className="text-xl font-bold text-[#34C759]">{fmt(stats.bestParlay)}</p>
+                    <p className="text-xs text-gray-400">Single parlay profit</p>
+                  </div>
+                </div>
+              </div>
+            )}
+
             {/* League breakdown */}
             <LeagueTable bets={bets} />
           </>

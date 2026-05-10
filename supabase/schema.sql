@@ -43,3 +43,11 @@ alter table settings     disable row level security;
 alter publication supabase_realtime add table bets;
 alter publication supabase_realtime add table transactions;
 alter publication supabase_realtime add table settings;
+
+-- ── Parlay migration (run if upgrading from initial schema) ────────────────────
+-- alter table bets add column if not exists bet_type text not null default 'single';
+-- alter table bets add column if not exists legs     jsonb;
+-- alter table bets drop constraint if exists bets_status_check;
+-- alter table bets add constraint bets_status_check
+--   check (status in ('pending','won','lost','void','half-won','half-lost'));
+-- alter table bets alter column odds type numeric(12,4);
