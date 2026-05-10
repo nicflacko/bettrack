@@ -109,7 +109,7 @@ export const BetTable = ({ bets, onUpdateStatus, onDelete, onEdit, limit }: Prop
 
                   {/* Odds */}
                   <td className="px-2 py-4 text-right pr-4">
-                    <span className="text-sm font-bold text-gray-800">{bet.odds.toFixed(2)}</span>
+                    <span className="text-sm font-bold text-gray-800">{bet.odds % 1 === 0 ? bet.odds.toFixed(2) : bet.odds.toFixed(3).replace(/0$/, '')}</span>
                   </td>
 
                   {/* Stake */}

@@ -223,7 +223,7 @@ export const AddBetModal = ({ onAdd, onUpdate, onClose, editBet }: Props) => {
               value={form.odds}
               onChange={e => set('odds', e.target.value)}
               placeholder="e.g. 2.25"
-              step="0.01"
+              step="0.001"
               min="1.01"
               error={errors.odds}
             />
