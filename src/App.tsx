@@ -15,7 +15,7 @@ import { CapitalModal }  from './components/CapitalModal';
 
 import { useStore }      from './store';
 import { computeStats, buildBankrollHistory, fmt, fmtPct } from './utils';
-import { Tab } from './types';
+import { Bet, Tab } from './types';
 
 export default function App() {
   const {
@@ -24,10 +24,11 @@ export default function App() {
     addTransaction, deleteTransaction,
   } = useStore();
 
-  const [tab, setTab]             = useState<Tab>('dashboard');
-  const [showAdd, setShowAdd]     = useState(false);
+  const [tab, setTab]                   = useState<Tab>('dashboard');
+  const [showAdd, setShowAdd]           = useState(false);
   const [showSettings, setShowSettings] = useState(false);
   const [showCapital, setShowCapital]   = useState(false);
+  const [editingBet, setEditingBet]     = useState<Bet | null>(null);
 
   const stats     = computeStats(initialBankroll, bets, transactions);
   const chartData = buildBankrollHistory(initialBankroll, bets, transactions);
@@ -151,6 +152,7 @@ export default function App() {
                 bets={bets}
                 onUpdateStatus={(id, s) => updateBet(id, { status: s })}
                 onDelete={deleteBet}
+                onEdit={setEditingBet}
                 limit={5}
               />
             </section>
@@ -179,6 +181,7 @@ export default function App() {
               bets={bets}
               onUpdateStatus={(id, s) => updateBet(id, { status: s })}
               onDelete={deleteBet}
+              onEdit={setEditingBet}
             />
           </>
         )}
@@ -255,6 +258,15 @@ export default function App() {
       </main>
 
       {showAdd && <AddBetModal onAdd={addBet} onClose={() => setShowAdd(false)} />}
+
+      {editingBet && (
+        <AddBetModal
+          editBet={editingBet}
+          onAdd={addBet}
+          onUpdate={updateBet}
+          onClose={() => setEditingBet(null)}
+        />
+      )}
 
       {showCapital && (
         <CapitalModal

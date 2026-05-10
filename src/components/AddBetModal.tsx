@@ -3,8 +3,10 @@ import { X, ChevronDown } from 'lucide-react';
 import { Bet, BetStatus } from '../types';
 
 interface Props {
-  onAdd:   (bet: Omit<Bet, 'id' | 'createdAt'>) => void;
-  onClose: () => void;
+  onAdd:     (bet: Omit<Bet, 'id' | 'createdAt'>) => void;
+  onUpdate?: (id: string, updates: Partial<Omit<Bet, 'id'>>) => void;
+  onClose:   () => void;
+  editBet?:  Bet;
 }
 
 const LEAGUES = [
@@ -86,8 +88,24 @@ const Select = ({
   </div>
 );
 
-export const AddBetModal = ({ onAdd, onClose }: Props) => {
-  const [form, setForm]   = useState<FormData>(blank);
+export const AddBetModal = ({ onAdd, onUpdate, onClose, editBet }: Props) => {
+  const isEdit = !!editBet;
+
+  const [form, setForm] = useState<FormData>(
+    editBet
+      ? {
+          match:     editBet.match,
+          league:    editBet.league,
+          market:    editBet.market,
+          selection: editBet.selection,
+          odds:      String(editBet.odds),
+          stake:     String(editBet.stake),
+          matchDate: editBet.matchDate,
+          status:    editBet.status,
+          notes:     editBet.notes ?? '',
+        }
+      : blank
+  );
   const [errors, setErrors] = useState<Partial<Record<keyof FormData, string>>>({});
 
   useEffect(() => {
@@ -118,7 +136,7 @@ export const AddBetModal = ({ onAdd, onClose }: Props) => {
   const submit = (e: React.FormEvent) => {
     e.preventDefault();
     if (!validate()) return;
-    onAdd({
+    const payload = {
       match:     form.match.trim(),
       league:    form.league,
       market:    form.market,
@@ -128,7 +146,12 @@ export const AddBetModal = ({ onAdd, onClose }: Props) => {
       matchDate: form.matchDate,
       status:    form.status,
       notes:     form.notes.trim(),
-    });
+    };
+    if (isEdit && editBet && onUpdate) {
+      onUpdate(editBet.id, payload);
+    } else {
+      onAdd(payload);
+    }
     onClose();
   };
 
@@ -137,25 +160,18 @@ export const AddBetModal = ({ onAdd, onClose }: Props) => {
 
   return (
     <div className="fixed inset-0 z-50 flex items-end sm:items-center justify-center p-0 sm:p-4">
-      {/* Backdrop */}
-      <div
-        className="absolute inset-0 bg-black/40 backdrop-blur-sm"
-        onClick={onClose}
-      />
+      <div className="absolute inset-0 bg-black/40 backdrop-blur-sm" onClick={onClose} />
 
-      {/* Sheet / Modal */}
       <div className="slide-up relative bg-white w-full sm:max-w-lg rounded-t-3xl sm:rounded-3xl shadow-modal overflow-hidden max-h-[95vh] flex flex-col">
 
-        {/* Handle (mobile) */}
         <div className="sm:hidden flex justify-center pt-3 pb-1">
           <div className="w-10 h-1 rounded-full bg-gray-200" />
         </div>
 
-        {/* Header */}
         <div className="flex items-center justify-between px-6 py-4 border-b border-gray-50">
           <div>
-            <h2 className="text-[17px] font-bold text-gray-900">Add New Bet</h2>
-            <p className="text-xs text-gray-400 mt-0.5">Log a bet to track your P&L</p>
+            <h2 className="text-[17px] font-bold text-gray-900">{isEdit ? 'Edit Bet' : 'Add New Bet'}</h2>
+            <p className="text-xs text-gray-400 mt-0.5">{isEdit ? 'Update the details below' : 'Log a bet to track your P&L'}</p>
           </div>
           <button
             onClick={onClose}
@@ -165,10 +181,8 @@ export const AddBetModal = ({ onAdd, onClose }: Props) => {
           </button>
         </div>
 
-        {/* Form body */}
         <form onSubmit={submit} className="overflow-y-auto flex-1 px-6 py-5 space-y-4">
 
-          {/* Match */}
           <Input
             label="Match"
             value={form.match}
@@ -177,7 +191,6 @@ export const AddBetModal = ({ onAdd, onClose }: Props) => {
             error={errors.match}
           />
 
-          {/* League + Date */}
           <div className="grid grid-cols-2 gap-3">
             <Select label="League" value={form.league} onChange={e => set('league', e.target.value)}>
               {LEAGUES.map(l => <option key={l}>{l}</option>)}
@@ -190,7 +203,6 @@ export const AddBetModal = ({ onAdd, onClose }: Props) => {
             />
           </div>
 
-          {/* Market + Selection */}
           <div className="grid grid-cols-2 gap-3">
             <Select label="Market" value={form.market} onChange={e => set('market', e.target.value)}>
               {MARKETS.map(m => <option key={m}>{m}</option>)}
@@ -204,7 +216,6 @@ export const AddBetModal = ({ onAdd, onClose }: Props) => {
             />
           </div>
 
-          {/* Odds + Stake */}
           <div className="grid grid-cols-2 gap-3">
             <Input
               label="Odds (Decimal)"
@@ -228,7 +239,6 @@ export const AddBetModal = ({ onAdd, onClose }: Props) => {
             />
           </div>
 
-          {/* Live return preview */}
           {potReturn && (
             <div className="rounded-2xl bg-gradient-to-r from-blue-50 to-indigo-50 border border-blue-100 px-5 py-3.5 flex items-center justify-between">
               <div>
@@ -242,7 +252,6 @@ export const AddBetModal = ({ onAdd, onClose }: Props) => {
             </div>
           )}
 
-          {/* Status */}
           <div>
             <label className="block text-[10px] font-bold text-gray-400 uppercase tracking-widest mb-1.5">
               Status
@@ -266,7 +275,6 @@ export const AddBetModal = ({ onAdd, onClose }: Props) => {
             </div>
           </div>
 
-          {/* Notes */}
           <div>
             <label className="flex items-center gap-1.5 text-[10px] font-bold text-gray-400 uppercase tracking-widest mb-1.5">
               Notes <span className="normal-case font-normal text-gray-300">(optional)</span>
@@ -282,16 +290,15 @@ export const AddBetModal = ({ onAdd, onClose }: Props) => {
             />
           </div>
 
-          {/* Submit */}
           <button
             type="submit"
             className="w-full bg-blue-500 hover:bg-blue-600 active:scale-[0.98] text-white font-bold py-3.5
               rounded-xl text-sm transition-all shadow-sm shadow-blue-500/25 mt-1"
           >
-            Add Bet
+            {isEdit ? 'Save Changes' : 'Add Bet'}
           </button>
 
-          <div className="h-1" /> {/* bottom breathing room */}
+          <div className="h-1" />
         </form>
       </div>
     </div>

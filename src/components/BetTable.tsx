@@ -1,4 +1,5 @@
-import { Trash2 } from 'lucide-react';
+import { useState } from 'react';
+import { Trash2, Pencil } from 'lucide-react';
 import { Bet, BetStatus } from '../types';
 import { calcProfit, calcPotentialReturn } from '../utils';
 
@@ -6,33 +7,35 @@ interface Props {
   bets: Bet[];
   onUpdateStatus: (id: string, status: BetStatus) => void;
   onDelete: (id: string) => void;
+  onEdit: (bet: Bet) => void;
   limit?: number;
 }
 
-const STATUS: Record<BetStatus, { label: string; dot: string; pill: string }> = {
-  pending:    { label: 'Pending', dot: 'bg-[#FF9F0A]', pill: 'bg-orange-50 text-orange-600 hover:bg-orange-100' },
-  won:        { label: 'Won',     dot: 'bg-[#34C759]', pill: 'bg-green-50  text-green-600  hover:bg-green-100'  },
-  lost:       { label: 'Lost',    dot: 'bg-[#FF3B30]', pill: 'bg-red-50    text-red-500    hover:bg-red-100'    },
-  'half-won': { label: '½ Won',   dot: 'bg-yellow-400', pill: 'bg-yellow-50 text-yellow-600 hover:bg-yellow-100' },
-  'half-lost':{ label: '½ Lost',  dot: 'bg-amber-400',  pill: 'bg-amber-50  text-amber-600  hover:bg-amber-100'  },
-  void:       { label: 'Void',    dot: 'bg-gray-400',  pill: 'bg-gray-100  text-gray-500   hover:bg-gray-200'   },
+const STATUS: Record<BetStatus, { label: string; dot: string; pill: string; select: string }> = {
+  pending:     { label: 'Pending', dot: 'bg-[#FF9F0A]', pill: 'bg-orange-50 text-orange-600', select: 'bg-orange-50 text-orange-600 border-orange-200' },
+  won:         { label: 'Won',     dot: 'bg-[#34C759]', pill: 'bg-green-50  text-green-600',  select: 'bg-green-50  text-green-600  border-green-200'  },
+  lost:        { label: 'Lost',    dot: 'bg-[#FF3B30]', pill: 'bg-red-50    text-red-500',    select: 'bg-red-50    text-red-500    border-red-200'    },
+  'half-won':  { label: '½ Won',   dot: 'bg-yellow-400', pill: 'bg-yellow-50 text-yellow-600', select: 'bg-yellow-50 text-yellow-600 border-yellow-200' },
+  'half-lost': { label: '½ Lost',  dot: 'bg-amber-400',  pill: 'bg-amber-50  text-amber-600',  select: 'bg-amber-50  text-amber-600  border-amber-200'  },
+  void:        { label: 'Void',    dot: 'bg-gray-400',  pill: 'bg-gray-100  text-gray-500',   select: 'bg-gray-100  text-gray-500   border-gray-200'   },
 };
 
-const CYCLE: BetStatus[] = ['pending', 'won', 'half-won', 'half-lost', 'lost', 'void'];
+const ALL_STATUSES: BetStatus[] = ['pending', 'won', 'lost', 'half-won', 'half-lost', 'void'];
 
 const LEAGUE_COLORS: Record<string, string> = {
-  'Premier League':    'bg-purple-50  text-purple-600',
-  'La Liga':           'bg-orange-50  text-orange-600',
-  'Serie A':           'bg-blue-50    text-blue-600',
-  'Bundesliga':        'bg-red-50     text-red-600',
-  'Ligue 1':           'bg-sky-50     text-sky-600',
-  'Champions League':  'bg-indigo-50  text-indigo-600',
-  'Europa League':     'bg-orange-50  text-orange-500',
+  'Premier League':   'bg-purple-50  text-purple-600',
+  'La Liga':          'bg-orange-50  text-orange-600',
+  'Serie A':          'bg-blue-50    text-blue-600',
+  'Bundesliga':       'bg-red-50     text-red-600',
+  'Ligue 1':          'bg-sky-50     text-sky-600',
+  'Champions League': 'bg-indigo-50  text-indigo-600',
+  'Europa League':    'bg-orange-50  text-orange-500',
 };
 const leagueColor = (league: string) =>
   LEAGUE_COLORS[league] ?? 'bg-gray-100 text-gray-500';
 
-export const BetTable = ({ bets, onUpdateStatus, onDelete, limit }: Props) => {
+export const BetTable = ({ bets, onUpdateStatus, onDelete, onEdit, limit }: Props) => {
+  const [openStatusId, setOpenStatusId] = useState<string | null>(null);
   const shown = limit ? bets.slice(0, limit) : bets;
 
   if (!bets.length) {
@@ -66,11 +69,10 @@ export const BetTable = ({ bets, onUpdateStatus, onDelete, limit }: Props) => {
           </thead>
           <tbody>
             {shown.map((bet, i) => {
-              const profit   = calcProfit(bet);
-              const potRet   = calcPotentialReturn(bet);
-              const settled  = ['won','lost','half-won','half-lost'].includes(bet.status);
-              const s        = STATUS[bet.status];
-              const nextStatus = CYCLE[(CYCLE.indexOf(bet.status) + 1) % CYCLE.length];
+              const profit  = calcProfit(bet);
+              const potRet  = calcPotentialReturn(bet);
+              const settled = ['won','lost','half-won','half-lost'].includes(bet.status);
+              const s       = STATUS[bet.status];
 
               return (
                 <tr
@@ -115,16 +117,43 @@ export const BetTable = ({ bets, onUpdateStatus, onDelete, limit }: Props) => {
                     <span className="text-sm text-gray-600">${bet.stake.toFixed(2)}</span>
                   </td>
 
-                  {/* Status — click to cycle */}
+                  {/* Status — dropdown */}
                   <td className="px-2 py-4 whitespace-nowrap">
-                    <button
-                      onClick={() => onUpdateStatus(bet.id, nextStatus)}
-                      title={`Click to mark as ${nextStatus}`}
-                      className={`flex items-center gap-1.5 pl-2 pr-2.5 py-1 rounded-lg text-xs font-semibold transition-colors ${s.pill}`}
-                    >
-                      <span className={`w-1.5 h-1.5 rounded-full ${s.dot}`} />
-                      {s.label}
-                    </button>
+                    <div className="relative inline-block">
+                      <button
+                        onClick={() => setOpenStatusId(openStatusId === bet.id ? null : bet.id)}
+                        className={`flex items-center gap-1.5 pl-2 pr-2.5 py-1 rounded-lg text-xs font-semibold transition-colors ${s.pill} hover:opacity-80`}
+                      >
+                        <span className={`w-1.5 h-1.5 rounded-full ${s.dot}`} />
+                        {s.label}
+                        <svg className="w-2.5 h-2.5 opacity-50 ml-0.5" viewBox="0 0 10 6" fill="none">
+                          <path d="M1 1l4 4 4-4" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round"/>
+                        </svg>
+                      </button>
+
+                      {openStatusId === bet.id && (
+                        <>
+                          {/* Backdrop to close */}
+                          <div
+                            className="fixed inset-0 z-10"
+                            onClick={() => setOpenStatusId(null)}
+                          />
+                          <div className="absolute left-0 top-full mt-1 z-20 bg-white rounded-xl shadow-lg border border-gray-100 py-1 min-w-[110px]">
+                            {ALL_STATUSES.map(st => (
+                              <button
+                                key={st}
+                                onClick={() => { onUpdateStatus(bet.id, st); setOpenStatusId(null); }}
+                                className={`w-full flex items-center gap-2 px-3 py-1.5 text-xs font-semibold transition-colors hover:bg-gray-50
+                                  ${bet.status === st ? 'opacity-40 cursor-default' : ''}`}
+                              >
+                                <span className={`w-1.5 h-1.5 rounded-full ${STATUS[st].dot}`} />
+                                {STATUS[st].label}
+                              </button>
+                            ))}
+                          </div>
+                        </>
+                      )}
+                    </div>
                   </td>
 
                   {/* P&L */}
@@ -144,15 +173,24 @@ export const BetTable = ({ bets, onUpdateStatus, onDelete, limit }: Props) => {
                     )}
                   </td>
 
-                  {/* Delete */}
-                  <td className="pr-3 py-4 w-8">
-                    <button
-                      onClick={() => onDelete(bet.id)}
-                      className="opacity-0 group-hover:opacity-100 transition-opacity text-gray-300 hover:text-[#FF3B30] p-1"
-                      title="Delete bet"
-                    >
-                      <Trash2 size={13} />
-                    </button>
+                  {/* Actions */}
+                  <td className="pr-3 py-4 w-16">
+                    <div className="flex items-center gap-1 opacity-0 group-hover:opacity-100 transition-opacity">
+                      <button
+                        onClick={() => onEdit(bet)}
+                        className="text-gray-300 hover:text-[#007AFF] p-1 transition-colors"
+                        title="Edit bet"
+                      >
+                        <Pencil size={13} />
+                      </button>
+                      <button
+                        onClick={() => onDelete(bet.id)}
+                        className="text-gray-300 hover:text-[#FF3B30] p-1 transition-colors"
+                        title="Delete bet"
+                      >
+                        <Trash2 size={13} />
+                      </button>
+                    </div>
                   </td>
                 </tr>
               );
