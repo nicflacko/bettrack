@@ -101,6 +101,7 @@ export const BetTable = ({ bets, onUpdateStatus, onDelete, onEdit, limit }: Prop
                             <span className={`w-1 h-1 rounded-full shrink-0 ${STATUS[leg.status]?.dot ?? 'bg-gray-300'}`} />
                             <span className="text-[11px] text-gray-500 truncate max-w-[220px]">
                               {leg.match} — {leg.selection} <span className="text-gray-400">@{leg.odds}</span>
+                              {leg.league && <span className={`ml-1 text-[9px] font-semibold px-1 py-0.5 rounded ${leagueColor(leg.league)}`}>{leg.league}</span>}
                             </span>
                           </div>
                         ))}
