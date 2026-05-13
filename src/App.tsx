@@ -14,7 +14,7 @@ import { LeagueTable }   from './components/LeagueTable';
 import { CapitalModal }  from './components/CapitalModal';
 
 import { useStore }      from './store';
-import { computeStats, buildBankrollHistory, fmt, fmtPct } from './utils';
+import { computeStats, buildBankrollHistory, fmt, fmtPct, calcProfit } from './utils';
 import { Bet, Tab } from './types';
 
 export default function App() {
@@ -252,37 +252,108 @@ export default function App() {
             </div>
 
             {/* Parlay performance */}
-            {stats.parlayCount > 0 && (
-              <div className="bg-white rounded-2xl border border-black/[0.04] shadow-card p-5 fade-in">
-                <h2 className="text-sm font-bold text-gray-900 mb-4">Parlay Performance</h2>
-                <div className="grid grid-cols-2 sm:grid-cols-4 gap-4">
-                  <div>
-                    <p className="text-[10px] font-semibold text-gray-400 uppercase tracking-widest mb-1">Parlays</p>
-                    <p className="text-xl font-bold text-gray-900">{stats.parlayCount}</p>
-                    <p className="text-xs text-gray-400">{stats.parlayWonCount}W · {stats.parlayLostCount}L</p>
+            {stats.parlayCount > 0 && (() => {
+              const parlayBets = bets.filter(b => b.betType === 'parlay');
+              const LEG_DOT: Record<string, string> = {
+                won: 'bg-[#34C759]', lost: 'bg-[#FF3B30]',
+                'half-won': 'bg-yellow-400', 'half-lost': 'bg-amber-400',
+                void: 'bg-gray-300', pending: 'bg-orange-400',
+              };
+              const LEAGUE_COLORS: Record<string, string> = {
+                'Premier League': 'bg-purple-50 text-purple-600',
+                'La Liga':        'bg-orange-50 text-orange-600',
+                'Serie A':        'bg-blue-50 text-blue-600',
+                'Bundesliga':     'bg-red-50 text-red-600',
+                'Ligue 1':        'bg-sky-50 text-sky-600',
+                'Champions League': 'bg-indigo-50 text-indigo-600',
+                'Europa League':  'bg-orange-50 text-orange-500',
+              };
+              const legColor = (l: string) => LEAGUE_COLORS[l] ?? 'bg-gray-100 text-gray-500';
+              const STATUS_STYLE: Record<string, { pill: string; label: string }> = {
+                won:         { pill: 'bg-green-50 text-green-600',   label: 'Won'    },
+                lost:        { pill: 'bg-red-50 text-red-500',       label: 'Lost'   },
+                pending:     { pill: 'bg-orange-50 text-orange-600', label: 'Pending'},
+                void:        { pill: 'bg-gray-100 text-gray-500',    label: 'Void'   },
+                'half-won':  { pill: 'bg-yellow-50 text-yellow-600', label: '½ Won'  },
+                'half-lost': { pill: 'bg-amber-50 text-amber-600',   label: '½ Lost' },
+              };
+              return (
+                <div className="space-y-4 fade-in">
+                  {/* Summary strip */}
+                  <div className="bg-gradient-to-br from-purple-50 via-white to-indigo-50 rounded-2xl border border-purple-100 p-5">
+                    <div className="flex items-center gap-2 mb-4">
+                      <span className="text-base">🎲</span>
+                      <h2 className="text-sm font-bold text-gray-900">Parlay Performance</h2>
+                      <span className="ml-auto text-[11px] font-semibold bg-purple-100 text-purple-600 px-2 py-0.5 rounded-lg">
+                        {stats.parlayCount} parlay{stats.parlayCount !== 1 ? 's' : ''}
+                      </span>
+                    </div>
+                    <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
+                      {[
+                        { label: 'Record',    value: `${stats.parlayWonCount}W · ${stats.parlayLostCount}L`, sub: `${stats.parlayCount - stats.parlayWonCount - stats.parlayLostCount} pending`, color: 'text-gray-900' },
+                        { label: 'P&L',       value: fmt(stats.parlayProfit, true), sub: `Staked ${fmt(stats.parlayStaked)}`, color: stats.parlayProfit >= 0 ? 'text-[#34C759]' : 'text-[#FF3B30]' },
+                        { label: 'ROI',       value: fmtPct(stats.parlayRoi, true), sub: `Overall ${fmtPct(stats.roi, true)}`, color: stats.parlayRoi >= 0 ? 'text-[#AF52DE]' : 'text-[#FF3B30]' },
+                        { label: 'Best Win',  value: fmt(stats.bestParlay), sub: 'Single parlay profit', color: 'text-[#34C759]' },
+                      ].map(m => (
+                        <div key={m.label} className="bg-white/70 rounded-xl p-3 border border-white">
+                          <p className="text-[10px] font-bold text-gray-400 uppercase tracking-widest mb-1">{m.label}</p>
+                          <p className={`text-lg font-bold ${m.color}`}>{m.value}</p>
+                          <p className="text-[11px] text-gray-400 mt-0.5">{m.sub}</p>
+                        </div>
+                      ))}
+                    </div>
                   </div>
-                  <div>
-                    <p className="text-[10px] font-semibold text-gray-400 uppercase tracking-widest mb-1">P&L</p>
-                    <p className={`text-xl font-bold ${stats.parlayProfit >= 0 ? 'text-[#34C759]' : 'text-[#FF3B30]'}`}>
-                      {fmt(stats.parlayProfit, true)}
-                    </p>
-                    <p className="text-xs text-gray-400">Staked {fmt(stats.parlayStaked)}</p>
-                  </div>
-                  <div>
-                    <p className="text-[10px] font-semibold text-gray-400 uppercase tracking-widest mb-1">ROI</p>
-                    <p className={`text-xl font-bold ${stats.parlayRoi >= 0 ? 'text-[#AF52DE]' : 'text-[#FF3B30]'}`}>
-                      {fmtPct(stats.parlayRoi, true)}
-                    </p>
-                    <p className="text-xs text-gray-400">vs overall {fmtPct(stats.roi, true)}</p>
-                  </div>
-                  <div>
-                    <p className="text-[10px] font-semibold text-gray-400 uppercase tracking-widest mb-1">Best Parlay</p>
-                    <p className="text-xl font-bold text-[#34C759]">{fmt(stats.bestParlay)}</p>
-                    <p className="text-xs text-gray-400">Single parlay profit</p>
+
+                  {/* Individual parlay cards */}
+                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                    {parlayBets.map(parlay => {
+                      const profit = calcProfit(parlay);
+                      const settled = ['won','lost','half-won','half-lost'].includes(parlay.status);
+                      const ss = STATUS_STYLE[parlay.status] ?? STATUS_STYLE.pending;
+                      return (
+                        <div key={parlay.id} className="bg-white rounded-2xl border border-black/[0.04] shadow-card p-4">
+                          <div className="flex items-start justify-between gap-2 mb-3">
+                            <div className="min-w-0">
+                              <p className="text-sm font-bold text-gray-900 truncate">{parlay.match}</p>
+                              <p className="text-[11px] text-gray-400 mt-0.5">
+                                {new Date(parlay.matchDate).toLocaleDateString('en-GB', { day: '2-digit', month: 'short' })}
+                                {' · '}${parlay.stake.toFixed(2)} stake
+                                {' · '}@{parlay.odds % 1 === 0 ? parlay.odds.toFixed(2) : String(parlay.odds).replace(/\.?0+$/, '')}
+                              </p>
+                            </div>
+                            <div className="flex flex-col items-end gap-1 shrink-0">
+                              <span className={`text-[10px] font-bold px-2 py-0.5 rounded-lg ${ss.pill}`}>{ss.label}</span>
+                              {settled && (
+                                <span className={`text-sm font-bold ${profit >= 0 ? 'text-[#34C759]' : 'text-[#FF3B30]'}`}>
+                                  {profit >= 0 ? '+' : ''}${Math.abs(profit).toFixed(2)}
+                                </span>
+                              )}
+                            </div>
+                          </div>
+
+                          {/* Legs */}
+                          <div className="space-y-1.5 pt-3 border-t border-gray-50">
+                            {parlay.legs?.map((leg, idx) => (
+                              <div key={idx} className="flex items-center gap-2">
+                                <span className={`w-1.5 h-1.5 rounded-full shrink-0 ${LEG_DOT[leg.status] ?? 'bg-gray-300'}`} />
+                                <span className="text-xs text-gray-600 truncate flex-1 min-w-0">
+                                  {leg.match}
+                                  <span className="text-gray-400"> — {leg.selection}</span>
+                                </span>
+                                <span className={`text-[9px] font-semibold px-1.5 py-0.5 rounded shrink-0 ${legColor(leg.league)}`}>
+                                  {leg.league}
+                                </span>
+                                <span className="text-[11px] text-gray-400 shrink-0">@{leg.odds}</span>
+                              </div>
+                            ))}
+                          </div>
+                        </div>
+                      );
+                    })}
                   </div>
                 </div>
-              </div>
-            )}
+              );
+            })()}
 
             {/* League breakdown */}
             <LeagueTable bets={bets} />
