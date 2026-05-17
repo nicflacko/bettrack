@@ -4,10 +4,11 @@ import { Bet, BetStatus, BetType, ParlayLeg } from '../types';
 import { deriveParlayStatus, calcParlayRawOdds } from '../utils';
 
 interface Props {
-  onAdd:     (bet: Omit<Bet, 'id' | 'createdAt'>) => void;
-  onUpdate?: (id: string, updates: Partial<Omit<Bet, 'id'>>) => void;
-  onClose:   () => void;
-  editBet?:  Bet;
+  onAdd:      (bet: Omit<Bet, 'id' | 'createdAt'>) => void;
+  onUpdate?:  (id: string, updates: Partial<Omit<Bet, 'id'>>) => void;
+  onClose:    () => void;
+  editBet?:   Bet;
+  reuseBet?:  Bet; // pre-fills parlay form for a new submission (legs reset to pending)
 }
 
 const LEAGUES = [
@@ -101,9 +102,12 @@ const SelectField = ({
   </div>
 );
 
-export const AddBetModal = ({ onAdd, onUpdate, onClose, editBet }: Props) => {
+export const AddBetModal = ({ onAdd, onUpdate, onClose, editBet, reuseBet }: Props) => {
   const isEdit = !!editBet;
-  const initBetType: BetType = editBet?.betType ?? 'single';
+  const today  = new Date().toISOString().split('T')[0];
+
+  // Source bet: editBet for editing, reuseBet for reuse, otherwise blank
+  const initBetType: BetType = (editBet ?? reuseBet)?.betType ?? 'single';
 
   const [betType, setBetType] = useState<BetType>(initBetType);
   const [form, setForm] = useState<SingleForm>(
@@ -123,12 +127,13 @@ export const AddBetModal = ({ onAdd, onUpdate, onClose, editBet }: Props) => {
   );
   const [legs, setLegs] = useState<LegData[]>(
     editBet?.legs?.map(l => ({ ...l, league: l.league ?? 'Premier League', odds: String(l.odds) })) ??
+    reuseBet?.legs?.map(l => ({ match: l.match, league: l.league ?? 'Premier League', selection: l.selection, odds: String(l.odds), status: 'pending' as BetStatus })) ??
     [blankLeg(), blankLeg()]
   );
   // parlay-level fields
-  const [parlayName, setParlayName] = useState(editBet?.betType === 'parlay' ? editBet.match : '');
-  const [parlayDate, setParlayDate] = useState(editBet?.betType === 'parlay' ? editBet.matchDate : new Date().toISOString().split('T')[0]);
-  const [parlayStake, setParlayStake] = useState(editBet?.betType === 'parlay' ? String(editBet.stake) : '');
+  const [parlayName,  setParlayName]  = useState(editBet?.betType === 'parlay' ? editBet.match : (reuseBet?.betType === 'parlay' ? reuseBet.match : ''));
+  const [parlayDate,  setParlayDate]  = useState(editBet?.betType === 'parlay' ? editBet.matchDate : today);
+  const [parlayStake, setParlayStake] = useState((editBet ?? reuseBet)?.betType === 'parlay' ? String((editBet ?? reuseBet)!.stake) : '');
   const [parlayNotes, setParlayNotes] = useState(editBet?.betType === 'parlay' ? (editBet.notes ?? '') : '');
 
   const [errors, setErrors] = useState<Record<string, string>>({});
@@ -258,10 +263,10 @@ export const AddBetModal = ({ onAdd, onUpdate, onClose, editBet }: Props) => {
         <div className="flex items-center justify-between px-6 py-4 border-b border-gray-50">
           <div>
             <h2 className="text-[17px] font-bold text-gray-900">
-              {isEdit ? 'Edit Bet' : 'Add New Bet'}
+              {isEdit ? 'Edit Bet' : reuseBet ? 'Reuse Parlay' : 'Add New Bet'}
             </h2>
             <p className="text-xs text-gray-400 mt-0.5">
-              {isEdit ? 'Update the details below' : 'Log a bet to track your P&L'}
+              {isEdit ? 'Update the details below' : reuseBet ? 'Edit legs then save as a new parlay' : 'Log a bet to track your P&L'}
             </p>
           </div>
           <button onClick={onClose} className="w-8 h-8 rounded-full bg-gray-100 hover:bg-gray-200 flex items-center justify-center text-gray-500 transition-colors">
@@ -491,7 +496,7 @@ export const AddBetModal = ({ onAdd, onUpdate, onClose, editBet }: Props) => {
           <button type="submit"
             className="w-full bg-blue-500 hover:bg-blue-600 active:scale-[0.98] text-white font-bold py-3.5
               rounded-xl text-sm transition-all shadow-sm shadow-blue-500/25 mt-1">
-            {isEdit ? 'Save Changes' : betType === 'parlay' ? 'Add Parlay' : 'Add Bet'}
+            {isEdit ? 'Save Changes' : reuseBet ? 'Save as New Parlay' : betType === 'parlay' ? 'Add Parlay' : 'Add Bet'}
           </button>
 
           <div className="h-1" />

@@ -1,5 +1,5 @@
 import { useState } from 'react';
-import { Trash2, Pencil } from 'lucide-react';
+import { Trash2, Pencil, RotateCcw } from 'lucide-react';
 import { Bet, BetStatus } from '../types';
 import { calcProfit, calcPotentialReturn } from '../utils';
 
@@ -8,6 +8,7 @@ interface Props {
   onUpdateStatus: (id: string, status: BetStatus) => void;
   onDelete: (id: string) => void;
   onEdit: (bet: Bet) => void;
+  onReuse: (bet: Bet) => void;
   limit?: number;
 }
 
@@ -34,7 +35,7 @@ const LEAGUE_COLORS: Record<string, string> = {
 const leagueColor = (league: string) =>
   LEAGUE_COLORS[league] ?? 'bg-gray-100 text-gray-500';
 
-export const BetTable = ({ bets, onUpdateStatus, onDelete, onEdit, limit }: Props) => {
+export const BetTable = ({ bets, onUpdateStatus, onDelete, onEdit, onReuse, limit }: Props) => {
   const [openStatusId, setOpenStatusId] = useState<string | null>(null);
   const shown = limit ? bets.slice(0, limit) : bets;
 
@@ -193,8 +194,17 @@ export const BetTable = ({ bets, onUpdateStatus, onDelete, onEdit, limit }: Prop
                   </td>
 
                   {/* Actions */}
-                  <td className="pr-3 py-4 w-16">
+                  <td className="pr-3 py-4 w-20">
                     <div className="flex items-center gap-1 opacity-0 group-hover:opacity-100 transition-opacity">
+                      {bet.betType === 'parlay' && (
+                        <button
+                          onClick={() => onReuse(bet)}
+                          className="text-gray-300 hover:text-[#AF52DE] p-1 transition-colors"
+                          title="Reuse this parlay"
+                        >
+                          <RotateCcw size={13} />
+                        </button>
+                      )}
                       <button
                         onClick={() => onEdit(bet)}
                         className="text-gray-300 hover:text-[#007AFF] p-1 transition-colors"

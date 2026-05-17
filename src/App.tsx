@@ -29,6 +29,7 @@ export default function App() {
   const [showSettings, setShowSettings] = useState(false);
   const [showCapital, setShowCapital]   = useState(false);
   const [editingBet, setEditingBet]     = useState<Bet | null>(null);
+  const [reusingBet, setReusingBet]     = useState<Bet | null>(null);
 
   const stats     = computeStats(initialBankroll, bets, transactions);
   const chartData = buildBankrollHistory(initialBankroll, bets, transactions);
@@ -153,6 +154,7 @@ export default function App() {
                 onUpdateStatus={(id, s) => updateBet(id, { status: s })}
                 onDelete={deleteBet}
                 onEdit={setEditingBet}
+                onReuse={setReusingBet}
                 limit={5}
               />
             </section>
@@ -182,6 +184,7 @@ export default function App() {
               onUpdateStatus={(id, s) => updateBet(id, { status: s })}
               onDelete={deleteBet}
               onEdit={setEditingBet}
+              onReuse={setReusingBet}
             />
           </>
         )}
@@ -321,8 +324,17 @@ export default function App() {
                                 {' · '}@{parlay.odds % 1 === 0 ? parlay.odds.toFixed(2) : String(parlay.odds).replace(/\.?0+$/, '')}
                               </p>
                             </div>
-                            <div className="flex flex-col items-end gap-1 shrink-0">
-                              <span className={`text-[10px] font-bold px-2 py-0.5 rounded-lg ${ss.pill}`}>{ss.label}</span>
+                            <div className="flex flex-col items-end gap-1.5 shrink-0">
+                              <div className="flex items-center gap-1.5">
+                                <button
+                                  onClick={() => setReusingBet(parlay)}
+                                  className="flex items-center gap-1 text-[10px] font-semibold text-purple-400 hover:text-purple-600 bg-purple-50 hover:bg-purple-100 px-2 py-0.5 rounded-lg transition-colors"
+                                  title="Reuse this parlay"
+                                >
+                                  ↺ Reuse
+                                </button>
+                                <span className={`text-[10px] font-bold px-2 py-0.5 rounded-lg ${ss.pill}`}>{ss.label}</span>
+                              </div>
                               {settled && (
                                 <span className={`text-sm font-bold ${profit >= 0 ? 'text-[#34C759]' : 'text-[#FF3B30]'}`}>
                                   {profit >= 0 ? '+' : ''}${Math.abs(profit).toFixed(2)}
@@ -369,6 +381,14 @@ export default function App() {
           onAdd={addBet}
           onUpdate={updateBet}
           onClose={() => setEditingBet(null)}
+        />
+      )}
+
+      {reusingBet && (
+        <AddBetModal
+          reuseBet={reusingBet}
+          onAdd={addBet}
+          onClose={() => setReusingBet(null)}
         />
       )}
 
