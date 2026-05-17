@@ -10,7 +10,8 @@ import { BetBreakdown }  from './components/BetBreakdown';
 import { BetTable }      from './components/BetTable';
 import { AddBetModal }   from './components/AddBetModal';
 import { SettingsModal } from './components/SettingsModal';
-import { LeagueTable }   from './components/LeagueTable';
+import { LeagueTable }         from './components/LeagueTable';
+import { ParlayLegAnalytics }  from './components/ParlayLegAnalytics';
 import { CapitalModal }  from './components/CapitalModal';
 
 import { useStore }      from './store';
@@ -366,6 +367,9 @@ export default function App() {
                 </div>
               );
             })()}
+
+            {/* Parlay leg deep-dive */}
+            <ParlayLegAnalytics bets={bets} />
 
             {/* League breakdown */}
             <LeagueTable bets={bets} />
